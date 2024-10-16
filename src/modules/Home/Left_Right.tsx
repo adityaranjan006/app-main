@@ -1,14 +1,18 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { StyleSheet, Text, View, TouchableOpacity, SafeAreaView, Animated, Easing } from "react-native";
 import { Slider } from "./Slider";
 import { useMyBedContext } from "../../context/LeftRightBed";
 import ToggleComponent from "./Toggle";
+import { useDebouncedCallback } from "use-debounce";
+import { BedMatress } from "../../classMattress";
 
 
 const LFTRFT = () => {
     const [activeButton, setActiveButton] = useState(1);
-    const { leftValue, rightValue, leftActive, rightActive, setLeftValue, setRightValue, setLeftActive, setRightActive } = useMyBedContext();
+    const { leftBed, rightBed, toggleActive } = useMyBedContext();
     const fadeAnim = useRef(new Animated.Value(1)).current;
+    const isInitialMount = useRef(true);
+
 
     const handleButtonPress = (button: number) => {
         if (activeButton !== button) {
@@ -28,6 +32,50 @@ const LFTRFT = () => {
             });
         }
     };
+
+    const debouncedCallback = useDebouncedCallback(async (values: { bed: BedMatress, value: number }) => {
+        const { bed, value } = values;
+        if (value !== undefined) {
+            if (bed.isLeftSide) {
+                try {
+                    if (!bed.getIsActive()) {
+                        console.log("Left Side API called to Turn Off Left Bed");
+                    } else {
+                        console.log("Left Side API called", value);
+                    }
+                } catch (error) {
+                    console.log(error);
+                }
+            } else {
+                // API call for right side
+                try {
+                    if (!bed.getIsActive()) {
+                        console.log("Right Side API called to Turn Off Right Bed");
+                    } else {
+                        console.log("Right Side API called", value);
+                    }
+                } catch (error) {
+                    console.log(error);
+                }
+            }
+        }
+    }, 1000);
+
+    useEffect(() => {
+        if (isInitialMount.current) {
+            isInitialMount.current = false;
+        } else {
+            if (activeButton === 1) {
+                debouncedCallback({ bed: leftBed, value: leftBed.getTemperatureVal() });
+            } else {
+                debouncedCallback({ bed: rightBed, value: rightBed.getTemperatureVal() });
+            }
+        }
+        return () => {
+            debouncedCallback.cancel();
+        };
+    }, [leftBed, rightBed, debouncedCallback]);
+
 
     return (
         <SafeAreaView>
@@ -51,23 +99,23 @@ const LFTRFT = () => {
                 <Animated.View style={{ flexGrow: 1, justifyContent: "center", opacity: fadeAnim, marginVertical: 10 }}>
                     {activeButton === 1 && (
                         <ToggleComponent
-                            active={leftActive}
-                            setActive={setLeftActive}
+                            bed={leftBed}
+                            setActive={toggleActive}
                         />
                     )}
                     {activeButton === 2 && (
                         <ToggleComponent
-                            active={rightActive}
-                            setActive={setRightActive}
+                            bed={rightBed}
+                            setActive={toggleActive}
                         />
                     )}
                     {activeButton === 1 && (
                         <Slider
                             min={-10}
                             max={10}
-                            val={leftValue}
-                            active={leftActive}
-                            onChange={setLeftValue}
+                            val={leftBed.getTemperatureVal()}
+                            active={leftBed.getIsActive()}
+                            bed={leftBed}
                         />
                     )}
 
@@ -75,9 +123,9 @@ const LFTRFT = () => {
                         <Slider
                             min={-10}
                             max={10}
-                            val={rightValue}
-                            active={rightActive}
-                            onChange={setRightValue}
+                            val={rightBed.getTemperatureVal()}
+                            active={rightBed.getIsActive()}
+                            bed={rightBed}
                         />
                     )}
                 </Animated.View>

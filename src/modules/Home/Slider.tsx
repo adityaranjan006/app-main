@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import * as Haptics from "expo-haptics";
 import ColorPickerSlider from "./slider-base/SemiCircularSlider";
+import { BedMatress } from "../../classMattress";
+import { useMyBedContext } from "../../context/LeftRightBed";
 
 const styles = StyleSheet.create({
   meterText: {
@@ -59,12 +61,13 @@ interface Props {
   max: number;
   val?: number;
   active?: boolean;
-  onChange?: (val: number) => void;
+  bed: BedMatress;
 }
 
 export function Slider(props: Props) {
   const [value, setValue] = useState(props.val ?? 0);
   const [radius, setRadius] = useState(10);
+  const { incTemperature, decTemperature } = useMyBedContext();
 
   useEffect(() => {
     if (props.val) {
@@ -76,9 +79,21 @@ export function Slider(props: Props) {
     if (val === value) {
       return;
     }
-    Haptics.selectionAsync();
-    setValue(val);
-    props.onChange?.(val);
+    // Round the value to the nearest integer
+    const roundedVal = Math.round(val);
+
+    // Only update if the rounded value has changed
+    if (roundedVal !== value) {
+      setValue(roundedVal);
+      // Update the bed temperature
+      if (roundedVal > value) {
+
+        incTemperature(props.bed);
+      } else if (roundedVal < value) {
+        decTemperature(props.bed);
+      }
+      Haptics.selectionAsync();
+    }
   }
 
   const midNum = useMemo(() => {
@@ -86,19 +101,23 @@ export function Slider(props: Props) {
   }, [props.max, props.min]);
 
   function decrement() {
-    const newValue = value - 1;
-    if (newValue < -10) {
+    if (value <= -10) {
       return;
     }
-    handleSliderChange(newValue);
+    const newValue = value - 1;
+    setValue(newValue);
+    decTemperature(props.bed);
+    Haptics.selectionAsync();
   }
 
   function increment() {
-    const newValue = value + 1;
-    if (newValue > 10) {
+    if (value >= 10) {
       return;
     }
-    handleSliderChange(newValue);
+    const newValue = value + 1;
+    setValue(newValue);
+    incTemperature(props.bed);
+    Haptics.selectionAsync();
   }
 
   const [isPressedPlus, setIsPressedPlus] = useState(false);

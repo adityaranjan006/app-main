@@ -1,37 +1,31 @@
 import React from 'react';
 import { View, Text, Switch, StyleSheet, Image, Pressable } from 'react-native';
+import { BedMatress } from '../../classMattress';
 
 interface Props {
-    active: boolean;
-    setActive: (active: boolean) => void;
+    bed: BedMatress;
+    setActive: (bed: BedMatress) => void;
 }
 
-const ToggleComponent: React.FC<Props> = ({ active, setActive }) => {
-    // const toggleSwitch = () => {
-    //     const newState = !active;
-    //     // console.log(`Toggling to: ${newState}`); 
-    //     setActive(newState);
-    // };
-
-    const icon = active
+const ToggleComponent: React.FC<Props> = ({ bed, setActive }) => {
+    const icon = bed.getIsActive()
         ? require('../../../assets/power_on.png')
         : require('../../../assets/power_off.png');
 
 
     const handleToggle = () => {
-        const newState = !active;
-        setActive(newState); // Toggle active state
+        setActive(bed);
     };
 
     const handleAccessibilityAction = (event: any) => {
         if (event.nativeEvent.action === 'toggle') {
-            handleToggle(); // Call toggle function
+            handleToggle();
         }
     };
     return (
         <View style={styles.container}>
             <Text style={styles.label}>
-                {active ? 'Active' : 'Inactive'}
+                {bed.getIsActive() ? 'Active' : 'Inactive'}
             </Text >
             {/* <Text style={styles.label} >Temperature</Text> */}
             {/* <Switch

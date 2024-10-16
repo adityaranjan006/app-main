@@ -1,27 +1,60 @@
-import React, { createContext, useContext, ReactNode, useState } from "react";
+import React, { createContext, useContext, ReactNode, useState, useCallback } from "react";
+import { BedMatress } from "../classMattress";
 
 interface MyBedContextType {
-    leftValue: number;
-    rightValue: number;
-    leftActive: boolean;
-    rightActive: boolean;
-    setLeftValue: (value: number) => void;
-    setRightValue: (value: number) => void;
-    setLeftActive: (value: boolean) => void;
-    setRightActive: (value: boolean) => void;
+    leftBed: BedMatress;
+    rightBed: BedMatress;
+    incTemperature: (bed: BedMatress) => void;
+    decTemperature: (bed: BedMatress) => void;
+    toggleActive: (bed: BedMatress) => void;
+    updateBed: (bed: BedMatress) => void;
+    setTemperature: (bed: BedMatress, value: number) => void;
 }
 
 const MyBedContext = createContext<MyBedContextType | undefined>(undefined);
 
 export const MyBedContextProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const [leftValue, setLeftValue] = useState<number>(0);
-    const [rightValue, setRightValue] = useState<number>(0);
-    const [leftActive, setLeftActive] = useState<boolean>(false);
-    const [rightActive, setRightActive] = useState<boolean>(false);
+    const [leftBed, setLeftBed] = useState(() => new BedMatress(true));
+    const [rightBed, setRightBed] = useState(() => new BedMatress(false));
 
+    const updateBed = useCallback((bed: BedMatress) => {
+        if (bed.getIsLeftSide()) {
+            setLeftBed(prevBed => {
+                const newBed = new BedMatress(true, bed);
+                console.log('Updated left bed state:', newBed.getState());
+                return newBed;
+            });
+        } else {
+            setRightBed(prevBed => {
+                const newBed = new BedMatress(false, bed);
+                console.log('Updated right bed state:', newBed.getState());
+                return newBed;
+            });
+        }
+    }, []);
+
+    const incTemperature = useCallback((bed: BedMatress) => {
+        bed.increaseTemperature();
+        updateBed(bed);
+    }, [updateBed]);
+
+    const decTemperature = useCallback((bed: BedMatress) => {
+        bed.decreaseTemperature();
+        updateBed(bed);
+    }, [updateBed]);
+
+    const toggleActive = useCallback((bed: BedMatress) => {
+        bed.changeActive();
+        updateBed(bed);
+    }, [updateBed]);
+
+    const setTemperature = useCallback((bed: BedMatress, value: number) => {
+        bed.setValue(value);
+        updateBed(bed);
+    }, [updateBed]);
 
     return (
-        <MyBedContext.Provider value={{ leftValue, rightValue, leftActive, rightActive, setLeftValue, setRightValue, setLeftActive, setRightActive }}>
+        <MyBedContext.Provider value={{ leftBed, rightBed, incTemperature, decTemperature, toggleActive, updateBed, setTemperature }}>
             {children}
         </MyBedContext.Provider>
     );
