@@ -1,15 +1,157 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import * as Haptics from "expo-haptics";
 import ColorPickerSlider from "./slider-base/SemiCircularSlider";
-import { BedMatress } from "../../classMattress";
-import { useMyBedContext } from "../../context/LeftRightBed";
+import { Bed } from "../../bedStore";
+import { SliderStyle } from "../../constants/globalColor";
+
+
+interface Props {
+  min: number;
+  max: number;
+  val?: number;
+  active?: boolean;
+  bed: Bed;
+  increase: () => void;
+  decrease: () => void;
+}
+
+const Slider: React.FC<Props> = ({ min, max, val, increase, decrease, active, bed }) => {
+  const [radius, setRadius] = useState(15);
+
+  function handleSliderChange(val: number) {
+    if (val === bed.temperatureValue) {
+      return;
+    }
+    // Round the value to the nearest integer
+    const roundedVal = Math.round(val);
+    // Only update if the rounded value has changed
+    if (roundedVal !== bed.temperatureValue) {
+      // Update the bed temperature
+      if (roundedVal > bed.temperatureValue) {
+        increase();
+      } else if (roundedVal < bed.temperatureValue) {
+        decrease();
+      }
+      Haptics.selectionAsync();
+    }
+  }
+
+  const midNum = useMemo(() => {
+    return Math.round((min + max) / 2);
+  }, [max, min]);
+
+  function decrement() {
+    if (bed.temperatureValue <= -15) {
+      return;
+    }
+    decrease();
+    Haptics.selectionAsync();
+  }
+
+  function increment() {
+    if (bed.temperatureValue >= 15) {
+      return;
+    }
+    increase();
+    Haptics.selectionAsync();
+  }
+
+  const [isPressedPlus, setIsPressedPlus] = useState(false);
+  const [isPressedMinus, setIsPressedMinus] = useState(false);
+
+  const buttonColor = active ? SliderStyle.Button.Active : SliderStyle.Button.Inactive;
+  const buttonTextColor = active ? SliderStyle.TextColor.Active : SliderStyle.TextColor.Inactive;
+
+  return (
+    <View style={{
+      width: "100%", alignItems: "center", marginTop: -10, paddingHorizontal: 5, pointerEvents: active ? "auto" : "none"
+    }}>
+      <Text style={[styles.meterText, { paddingBottom: 0 }]}>{midNum}</Text>
+      <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 16, width: "100%" }}>
+        <Text style={[styles.meterText, { marginBottom: 14 }, { color: "white" }]}>
+          {min}
+        </Text>
+
+        <View
+          style={{ justifyContent: "center", flexDirection: "row", flex: 1, position: "relative" }}
+          onLayout={(ev) => {
+            const w = ev.nativeEvent.layout.width;
+            setRadius(w / 2);
+          }}
+        >
+          <ColorPickerSlider
+            thumbColor={active ? SliderStyle.Thumb.Active : SliderStyle.Thumb.Inactive}
+            trackStrokeWidth={20}
+            gestureDisabled={!active}
+            trackRadius={radius}
+            circleType={"Top"}
+            value={bed.temperatureValue}
+            onChangeColor={(color) => { }}
+            onValueChange={handleSliderChange}
+            linearGradient={[
+              { color: active ? "#0000FF" : "#A9A9A9", offset: 0 },
+              { color: active ? "#0000FF" : "#A9A9A9", offset: 0.2 },
+              { color: active ? "#00FFF0" : "#A9A9A9", offset: 0.4 },
+              { color: active ? "#FFFF00" : "#A9A9A9", offset: 0.6 },
+              { color: active ? "#FF7F00" : "#A9A9A9", offset: 0.8 },
+              { color: active ? "#FF0000" : "#A9A9A9", offset: 1 },
+            ]}
+            maxValue={15}
+            minValue={-15}
+            paddingVertical={10}
+          />
+
+          <View style={[styles.centerTextContainer]}>
+            <Text style={{ fontSize: 20, color: buttonTextColor }}>
+              {(function () {
+                if (bed.temperatureValue === midNum) {
+                  return active ? "Room Temp" : "Device is OFF";
+                }
+                return active ? bed.temperatureValue < midNum ? "Cooling down" : "Warming up" : "Device is OFF";
+              })()}
+            </Text>
+            <Text style={{ fontSize: 60, color: buttonTextColor, fontWeight: "500" }}>
+              {active ? bed.temperatureValue : "--"}
+            </Text>
+          </View>
+        </View>
+
+        <Text style={{ ...styles.meterText, marginBottom: 14, color: SliderStyle.TextColor.Active }}>
+          +{max}
+        </Text>
+      </View>
+      <View style={{ marginTop: 54, flexDirection: "row", gap: 20 }}>
+        <Pressable
+          style={[styles.button, { backgroundColor: active ? (isPressedMinus ? SliderStyle.Pressed.Active : buttonColor) : "#A9A9A9" }]}
+          onPressIn={() => {
+            setIsPressedMinus(true);
+            if (active) decrement();
+          }}
+          onPressOut={() => setIsPressedMinus(false)}
+        >
+          <Text style={[styles.buttonTextMinus, { color: active ? "#fff" : "#ffffff" }]}>-</Text>
+        </Pressable>
+        <Pressable
+          style={[styles.button, { backgroundColor: active ? (isPressedPlus ? SliderStyle.Pressed.Active : buttonColor) : "#A9A9A9" }]}
+          onPressIn={() => {
+            setIsPressedPlus(true);
+            if (active) increment();
+          }}
+          onPressOut={() => setIsPressedPlus(false)}
+        >
+          <Text style={[styles.buttonTextPlus, { color: active ? "#fff" : "#ffffff" }]}>+</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
 
 const styles = StyleSheet.create({
   meterText: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "fff"
+    color: SliderStyle.TextColor.Active
   },
   centerTextContainer: {
     position: "absolute",
@@ -48,164 +190,5 @@ const styles = StyleSheet.create({
   buttonPressed: {
     backgroundColor: "#0056b3",
   },
-  disabled: {
-    backgroundColor: "#A9A9A9",
-  },
-  disabledText: {
-    color: "#ffffff",
-  },
 });
-
-interface Props {
-  min: number;
-  max: number;
-  val?: number;
-  active?: boolean;
-  bed: BedMatress;
-}
-
-export function Slider(props: Props) {
-  const [value, setValue] = useState(props.val ?? 0);
-  const [radius, setRadius] = useState(10);
-  const { incTemperature, decTemperature } = useMyBedContext();
-
-  useEffect(() => {
-    if (props.val) {
-      setValue(props.val);
-    }
-  }, [props.val]);
-
-  function handleSliderChange(val: number) {
-    if (val === value) {
-      return;
-    }
-    // Round the value to the nearest integer
-    const roundedVal = Math.round(val);
-
-    // Only update if the rounded value has changed
-    if (roundedVal !== value) {
-      setValue(roundedVal);
-      // Update the bed temperature
-      if (roundedVal > value) {
-
-        incTemperature(props.bed);
-      } else if (roundedVal < value) {
-        decTemperature(props.bed);
-      }
-      Haptics.selectionAsync();
-    }
-  }
-
-  const midNum = useMemo(() => {
-    return Math.round((props.min + props.max) / 2);
-  }, [props.max, props.min]);
-
-  function decrement() {
-    if (value <= -10) {
-      return;
-    }
-    const newValue = value - 1;
-    setValue(newValue);
-    decTemperature(props.bed);
-    Haptics.selectionAsync();
-  }
-
-  function increment() {
-    if (value >= 10) {
-      return;
-    }
-    const newValue = value + 1;
-    setValue(newValue);
-    incTemperature(props.bed);
-    Haptics.selectionAsync();
-  }
-
-  const [isPressedPlus, setIsPressedPlus] = useState(false);
-  const [isPressedMinus, setIsPressedMinus] = useState(false);
-
-  const buttonColor = props.active ? "#505051" : "#A9A9A9";
-  const buttonTextColor = props.active ? "#fff" : "#A9A9A9";
-
-  return (
-    <View style={{
-      width: "100%", alignItems: "center", marginTop: -10, paddingHorizontal: 5, pointerEvents: props.active ? "auto" : "none"
-    }}>
-      <Text style={[styles.meterText, { paddingBottom: 0 }]}>{midNum}</Text>
-      <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 16, width: "100%" }}>
-        <Text style={[styles.meterText, { marginBottom: 14 }, { color: "white" }]}>
-          {props.min}
-        </Text>
-
-        <View
-          style={{ justifyContent: "center", flexDirection: "row", flex: 1, position: "relative" }}
-          onLayout={(ev) => {
-            const w = ev.nativeEvent.layout.width;
-            setRadius(w / 2);
-          }}
-        >
-          <ColorPickerSlider
-            thumbColor={props.active ? "white" : "#A9A9A9"}
-            trackStrokeWidth={20}
-            gestureDisabled={!props.active}
-            trackRadius={radius}
-            circleType={"Top"}
-            value={value}
-            onChangeColor={(color) => { }}
-            onValueChange={handleSliderChange}
-            linearGradient={[
-              { color: props.active ? "#0000FF" : "#A9A9A9", offset: 0 },
-              { color: props.active ? "#0000FF" : "#A9A9A9", offset: 0.2 },
-              { color: props.active ? "#00FFF0" : "#A9A9A9", offset: 0.4 },
-              { color: props.active ? "#FFFF00" : "#A9A9A9", offset: 0.6 },
-              { color: props.active ? "#FF7F00" : "#A9A9A9", offset: 0.8 },
-              { color: props.active ? "#FF0000" : "#A9A9A9", offset: 1 },
-            ]}
-            maxValue={10}
-            minValue={-10}
-            paddingVertical={10}
-          />
-
-          <View style={[styles.centerTextContainer]}>
-            <Text style={{ fontSize: 20, color: props.active ? "#fff" : "#A9A9A9" }}>
-              {(function () {
-                if (value === midNum) {
-                  return props.active ? "Room Temp" : "Device is OFF";
-                }
-                return props.active ? value < midNum ? "Cooling down" : "Warming up" : "Device is OFF";
-              })()}
-            </Text>
-            <Text style={{ fontSize: 60, color: props.active ? "#fff" : "#A9A9A9", fontWeight: "500" }}>
-              {props.active ? value : "--"}
-            </Text>
-          </View>
-        </View>
-
-        <Text style={{ ...styles.meterText, marginBottom: 14, color: "white" }}>
-          +{props.max}
-        </Text>
-      </View>
-      <View style={{ marginTop: 54, flexDirection: "row", gap: 20 }}>
-        <Pressable
-          style={[styles.button, { backgroundColor: props.active ? (isPressedMinus ? "#fff" : buttonColor) : "#A9A9A9" }]}
-          onPressIn={() => {
-            setIsPressedMinus(true);
-            if (props.active) decrement();
-          }}
-          onPressOut={() => setIsPressedMinus(false)}
-        >
-          <Text style={[styles.buttonTextMinus, { color: props.active ? "#fff" : "#ffffff" }]}>-</Text>
-        </Pressable>
-        <Pressable
-          style={[styles.button, { backgroundColor: props.active ? (isPressedPlus ? "#fff" : buttonColor) : "#A9A9A9" }]}
-          onPressIn={() => {
-            setIsPressedPlus(true);
-            if (props.active) increment();
-          }}
-          onPressOut={() => setIsPressedPlus(false)}
-        >
-          <Text style={[styles.buttonTextPlus, { color: props.active ? "#fff" : "#ffffff" }]}>+</Text>
-        </Pressable>
-      </View>
-    </View>
-  );
-}
+export default Slider;

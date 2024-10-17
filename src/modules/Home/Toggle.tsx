@@ -1,20 +1,21 @@
 import React from 'react';
-import { View, Text, Switch, StyleSheet, Image, Pressable } from 'react-native';
-import { BedMatress } from '../../classMattress';
+import { View, Text, StyleSheet, Image, Pressable } from 'react-native';
+import { Bed } from '../../bedStore';
+import { Toggle } from '../../constants/globalColor';
 
 interface Props {
-    bed: BedMatress;
-    setActive: (bed: BedMatress) => void;
+    bed: Bed;
+    setActive: () => void;
 }
 
 const ToggleComponent: React.FC<Props> = ({ bed, setActive }) => {
-    const icon = bed.getIsActive()
+    const icon = bed.isActive
         ? require('../../../assets/power_on.png')
         : require('../../../assets/power_off.png');
 
 
     const handleToggle = () => {
-        setActive(bed);
+        setActive();
     };
 
     const handleAccessibilityAction = (event: any) => {
@@ -25,16 +26,8 @@ const ToggleComponent: React.FC<Props> = ({ bed, setActive }) => {
     return (
         <View style={styles.container}>
             <Text style={styles.label}>
-                {bed.getIsActive() ? 'Active' : 'Inactive'}
+                {bed.isActive ? 'Active' : 'Inactive'}
             </Text >
-            {/* <Text style={styles.label} >Temperature</Text> */}
-            {/* <Switch
-                onValueChange={toggleSwitch}
-                trackColor={{ false: '#767577', true: '#76FF03' }}
-                thumbColor={active ? '#76FF03' : '#f4f3f4'}
-                value={active}
-                style={styles.switch}
-            /> */}
             <Pressable
                 onPress={handleToggle} // Handle regular press
                 onAccessibilityAction={handleAccessibilityAction} // Handle accessibility action
@@ -59,11 +52,8 @@ const styles = StyleSheet.create({
     label: {
         fontSize: 18,
         marginBottom: 10,
-        color: "white",
+        color: Toggle.TextColor.textColor,
         fontWeight: "bold"
-    },
-    switch: {
-        transform: [{ scale: 1.5 }],
     },
 });
 

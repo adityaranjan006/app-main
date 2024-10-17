@@ -18,12 +18,10 @@ export class BedMatress implements BedInterface {
             this.id = otherBed.id;
             this.temperatureVal = otherBed.temperatureVal;
             this.isActive = otherBed.isActive;
-            this.isLeftSide = otherBed.isLeftSide;
         } else {
             this.id = 1;
             this.temperatureVal = 0;
             this.isActive = false;
-            this.isLeftSide = isLeftSide;
         }
     }
 

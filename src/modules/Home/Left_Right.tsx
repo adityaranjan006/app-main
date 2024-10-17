@@ -1,20 +1,33 @@
 import React, { useState, useRef, useEffect } from "react";
 import { StyleSheet, Text, View, TouchableOpacity, SafeAreaView, Animated, Easing } from "react-native";
-import { Slider } from "./Slider";
-import { useMyBedContext } from "../../context/LeftRightBed";
-import ToggleComponent from "./Toggle";
 import { useDebouncedCallback } from "use-debounce";
-import { BedMatress } from "../../classMattress";
+import ToggleComponent from "./Toggle";
+import { useBedMethods } from "../../common/hooks/useBedMethods";
+import Slider from "./Slider";
+import { Bed } from "../../bedStore";
+import { Dashboard } from "../../constants/globalColor";
 
+enum ActiveButton {
+    Left = 1,
+    Right = 2,
+}
 
 const LFTRFT = () => {
-    const [activeButton, setActiveButton] = useState(1);
-    const { leftBed, rightBed, toggleActive } = useMyBedContext();
+    const [activeButton, setActiveButton] = useState(ActiveButton.Left);
     const fadeAnim = useRef(new Animated.Value(1)).current;
     const isInitialMount = useRef(true);
+    const {
+        lBed,
+        rBed,
+        lBedToggleActive,
+        lBedIncrease,
+        lBedDecrease,
+        rBedToggleActive,
+        rBedIncrease,
+        rBedDecrease,
+    } = useBedMethods();
 
-
-    const handleButtonPress = (button: number) => {
+    const handleButtonPress = (button: ActiveButton) => {
         if (activeButton !== button) {
             Animated.timing(fadeAnim, {
                 toValue: 0,
@@ -33,30 +46,18 @@ const LFTRFT = () => {
         }
     };
 
-    const debouncedCallback = useDebouncedCallback(async (values: { bed: BedMatress, value: number }) => {
+    const debouncedCallback = useDebouncedCallback(async (values: { bed: Bed, value: number }) => {
         const { bed, value } = values;
         if (value !== undefined) {
-            if (bed.isLeftSide) {
-                try {
-                    if (!bed.getIsActive()) {
-                        console.log("Left Side API called to Turn Off Left Bed");
-                    } else {
-                        console.log("Left Side API called", value);
-                    }
-                } catch (error) {
-                    console.log(error);
+            const side = bed.isLeftSide ? "Left" : "Right";
+            try {
+                if (!bed.isActive) {
+                    console.log(`${side} Side API called to Turn Off ${side} Bed`);
+                } else {
+                    console.log(`${side} Side API called`, value);
                 }
-            } else {
-                // API call for right side
-                try {
-                    if (!bed.getIsActive()) {
-                        console.log("Right Side API called to Turn Off Right Bed");
-                    } else {
-                        console.log("Right Side API called", value);
-                    }
-                } catch (error) {
-                    console.log(error);
-                }
+            } catch (error) {
+                console.log(error);
             }
         }
     }, 1000);
@@ -65,16 +66,16 @@ const LFTRFT = () => {
         if (isInitialMount.current) {
             isInitialMount.current = false;
         } else {
-            if (activeButton === 1) {
-                debouncedCallback({ bed: leftBed, value: leftBed.getTemperatureVal() });
+            if (activeButton === ActiveButton.Left) {
+                debouncedCallback({ bed: lBed, value: lBed.temperatureValue });
             } else {
-                debouncedCallback({ bed: rightBed, value: rightBed.getTemperatureVal() });
+                debouncedCallback({ bed: rBed, value: rBed.temperatureValue });
             }
         }
         return () => {
             debouncedCallback.cancel();
         };
-    }, [leftBed, rightBed, debouncedCallback]);
+    }, [lBed, rBed, debouncedCallback]);
 
 
     return (
@@ -82,50 +83,54 @@ const LFTRFT = () => {
             <View style={styles.container}>
                 <View style={styles.row}>
                     <TouchableOpacity
-                        style={[styles.button, { opacity: activeButton === 1 ? 1 : 0.5 }, activeButton === 1 && styles.activeButton]}
-                        onPress={() => handleButtonPress(1)}
+                        style={[styles.button, { opacity: activeButton === ActiveButton.Left ? 1 : 0.5 }, activeButton === ActiveButton.Left && styles.activeButton]}
+                        onPress={() => handleButtonPress(ActiveButton.Left)}
                     >
                         <Text style={styles.buttonText}>LEFT</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                        style={[styles.button, { opacity: activeButton === 2 ? 1 : 0.5 }, activeButton === 2 && styles.activeButton]}
-                        onPress={() => handleButtonPress(2)}
+                        style={[styles.button, { opacity: activeButton === ActiveButton.Right ? 1 : 0.5 }, activeButton === ActiveButton.Right && styles.activeButton]}
+                        onPress={() => handleButtonPress(ActiveButton.Right)}
                     >
                         <Text style={styles.buttonText}>RIGHT</Text>
                     </TouchableOpacity>
                 </View>
 
                 <Animated.View style={{ flexGrow: 1, justifyContent: "center", opacity: fadeAnim, marginVertical: 10 }}>
-                    {activeButton === 1 && (
+                    {activeButton === ActiveButton.Left && (
                         <ToggleComponent
-                            bed={leftBed}
-                            setActive={toggleActive}
+                            bed={lBed}
+                            setActive={lBedToggleActive}
                         />
                     )}
-                    {activeButton === 2 && (
+                    {activeButton === ActiveButton.Right && (
                         <ToggleComponent
-                            bed={rightBed}
-                            setActive={toggleActive}
+                            bed={rBed}
+                            setActive={rBedToggleActive}
                         />
                     )}
-                    {activeButton === 1 && (
+                    {activeButton === ActiveButton.Left && (
                         <Slider
-                            min={-10}
-                            max={10}
-                            val={leftBed.getTemperatureVal()}
-                            active={leftBed.getIsActive()}
-                            bed={leftBed}
+                            min={-15}
+                            max={15}
+                            val={lBed.temperatureValue}
+                            active={lBed.isActive}
+                            bed={lBed}
+                            increase={lBedIncrease}
+                            decrease={lBedDecrease}
                         />
                     )}
 
-                    {activeButton === 2 && (
+                    {activeButton === ActiveButton.Right && (
                         <Slider
-                            min={-10}
-                            max={10}
-                            val={rightBed.getTemperatureVal()}
-                            active={rightBed.getIsActive()}
-                            bed={rightBed}
+                            min={-15}
+                            max={15}
+                            val={rBed.temperatureValue}
+                            active={rBed.isActive}
+                            bed={rBed}
+                            increase={rBedIncrease}
+                            decrease={rBedDecrease}
                         />
                     )}
                 </Animated.View>
@@ -154,7 +159,7 @@ const styles = StyleSheet.create({
     button: {
         flex: 1,
         padding: 15,
-        backgroundColor: "#323233",
+        backgroundColor: Dashboard.Button.Inactive,
         borderRadius: 5,
         marginHorizontal: 4,
         elevation: 5, // For Android shadow
@@ -164,13 +169,14 @@ const styles = StyleSheet.create({
         shadowRadius: 3, // Shadow blur radius
     },
     buttonText: {
-        color: "#fff",
+        color: Dashboard.TextColor.Active,
         fontSize: 16,
         textAlign: "center",
         fontWeight: "bold",
     },
     activeButton: {
-        backgroundColor: "#505051",
+        backgroundColor: Dashboard.Button.Active,
+        color: Dashboard.TextColor.Active,
         fontWeight: "800",
     },
 });
